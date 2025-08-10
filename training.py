@@ -4,6 +4,7 @@ from random import randint
 #Unfortunately had to use numpy for the training portion as the MNIST dataset is in a weird file format.
 import numpy as np
 import idx2numpy
+print("Program start.")
 def fit_list(list):
     fitted=[]
     for i in list:
@@ -22,15 +23,26 @@ file = "data/train.idx3-ubyte"
 file2= "data/labels.idx1-ubyte"
 full_xs = idx2numpy.convert_from_file(file)
 full_ys= idx2numpy.convert_from_file(file2)
-full_batch=random_batch(full_xs,full_ys,50)
+full_batch=random_batch(full_xs,full_ys,1)
 xs= (full_batch[0])
 for i in range(len(xs)):
     xs[i]=fit_list(xs[i])
-ys= (full_batch[1])
-NN=MLP(784,[28,28,1])
+temp_ys= (full_batch[1])
+ys=[]
+for i in range(len(temp_ys)):
+    ls=[]
+    for j in range(10):
+        if j==temp_ys[i]:
+            ls.append(1.0)
+        else:
+            ls.append(0.0)
+    ys.append(ls)
+NN=MLP(784,[32,10])
 print("Training start.")
-NN.train(xs,ys)
-trained_model_parameters=NN.parameters()
-with open('trained_model_parameters.txt','w') as f:
-    for i in trained_model_parameters:
-        f.write(str(i.data)+"\n")
+batch_size=10
+
+NN.train(xs,ys,batch_size)
+# trained_model_parameters=NN.parameters()
+# with open('trained_model_parameters.txt','w') as f:
+#     for i in trained_model_parameters:
+#         f.write(str(i.data)+"\n")

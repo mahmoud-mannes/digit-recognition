@@ -1,8 +1,18 @@
-from math import exp
+import math
+def softmax(self):
+    max_input=max([i.data for i in self])
+    exps= [math.exp(z.data-max_input) for z in self]
+    sum_exps=sum(exps)
+    out= [Value(exps[e]/sum_exps,{self[e]},'softmax') for e in range(len(exps))]
+    for i in out:
+        i._backward=softmax_grad
+    return out
+def softmax_grad(self,target,out):
+    self.grad+=(self-target)*out.grad
 class Value:
     def __init__(self,data,_children=set(),op_=""):
         self.data=data
-        self._backward = lambda: None
+        self._backward = lambda a,b,c: None
         self._children=_children
         self.op_=op_
         self.grad=0.0
@@ -11,7 +21,7 @@ class Value:
         res=self.data+other.data
         out=Value(res,(self,other),'+')
         
-        def _backprop():
+        def _backprop(a,b,c):
             self.grad+=out.grad
             other.grad+=out.grad
         out._backward=_backprop
@@ -24,13 +34,19 @@ class Value:
         other = other if isinstance(other,Value) else Value(other)
         res=self.data*other.data
         out=Value(res,(self,other),"*")
-        def _backprop():
+        def _backprop(a,b,c):
             self.grad+=other.data*out.grad
             other.grad+=self.data*out.grad
         out._backward=_backprop
         return out
     def __rmul__(self,other):
         return self*other
+    def __gt__(self,other):
+        if isinstance(self,int) or isinstance(self,float):
+            self=Value(self)
+        if isinstance(other,float) or isinstance(other,int):
+            other=Value(other)
+        return self.data>other.data
     def __neg__(self):
         res=-self.data
         return Value(res)
@@ -38,38 +54,54 @@ class Value:
         return self + (-other)
     def __pow__(self,other):
         out=Value(self.data**other,(self,),"**")
-        def backprop():
-            self.grad+=other*self.data**(other-1)*out.grad
-        out._backward=backprop
+        def _backprop(a,b,c):
+            #This should be self.data ** (other -1), however I've replaced it with self.data
+            #because the only power I used was 2, so (other -1)= (2-1)=1, so there's no need
+            #for adding a **(other-1) as it'll only make the calculations slower.
+            self.grad+=other*(self.data)*out.grad
+        out._backward=_backprop
         return out
+    def __lt__(self,other):
+        #Ran into errors where an int is compared to a Value class. (ints don't have a data attribute)
+        if isinstance(self,int) or isinstance(self,float):
+            self=Value(self)
+        if isinstance(other,float) or isinstance(other,int):
+            other=Value(other)
+        return self.data<other.data
     def tanh(self):
-        res=(exp(2*self.data)-1)/(exp(2*self.data)+1)
+        if isinstance(self,int) or isinstance(self,float):
+            x = max(min(Value(self), Value(50)), Value(-50))  # Clip to prevent overflow
+        else:
+            x = max(min(self, Value(50)), Value(-50))
+        #Ran into issues where the value of x was contained within multiple Value classes e.g Value(Value(2.0))
+        while isinstance(x,Value):
+            x=x.data
+        e_pos = math.exp(x)
+        e_neg = math.exp(-x)
+        res=(e_pos - e_neg) / (e_pos + e_neg)
         out=Value(res,{self},'tanh')
-        def backprop():
+        def _backprop(a,b,c):
             self.grad+=(1-res**2)*out.grad
-        out._backward=backprop
+        out._backward=_backprop
         return out
     def ReLU(self):
         return Value(0.0) if self.data < 0 else self
-#     def makelist(self):
-#         v=[]
-#         if self not in v:
-#             v.append(self)
-#             for i in self._children:
-#                 i.makelist()
-#         return v
-    def backward(self):
-#         v=self.makelist()
+    def backward(self,pred,target):
         v=[]
+        #Creating a list that includes all of the children of the current neuron we're backpropagating through.
         def makelist(x):
-            v=[]
-            if x not in v:
-                v.append(x)
-                for i in x._children:
-                    v.extend(makelist(i))
-            return v
+            visited=set()
+            topo=[]
+            def build(v):
+                if v not in visited:
+                    visited.add(v)
+                    for child in v._children:
+                        build(child)
+                    topo.append(v)
+            build(x)
+            return topo
         v=makelist(self)
         self.grad=1.0
-        for i in v:
-            i._backward()
+        for i in reversed(v):
+            i._backward(pred,target,i)
         return v

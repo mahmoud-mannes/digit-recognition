@@ -1,4 +1,5 @@
 # digit-recognition
-A machine learning model built from scratch on python using only Object Oriented Programming without the use of external libraries (except for idx2numpy and numpy for data handling and training). Built to recognize digits from a 28px by 28px image of handwritten numbers. 
+A neural network creation framework (much like Andrej Karpathy's micrograd) that allows one to create and tune a neural network to their liking, created from scratch using raw python (mainly OOP) without the use of external libraries (except for idx2numpy and numpy for data handling and training.)
+Using this framework, a neural network was built to recognize digits from a 28px by 28px image of handwritten numbers. This neural network involves the usage of activation functions like tanh and softmax.
 Data used: MNIST dataset containing both handwritten images and labels of numbers.
-Currently a work in progress.
+
