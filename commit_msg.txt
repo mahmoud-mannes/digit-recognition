@@ -1,2 +1,0 @@
-Implemented activation functions like softmax and tanh for non-linearity to add complexity to the neural network.
-Changed training and gradient descent functions to accomodate for the change in the structure of the neural network.
